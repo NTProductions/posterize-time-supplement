@@ -1,0 +1,46 @@
+	// get the frame number of the requested frame
+	float frameNumber = in_data->current_time/in_data->time_step;
+	// round to avoid some errors
+	float roundedFrameRate = round(float(in_data->time_scale) / float(in_data->time_step));
+	// our desired frame rate, divided by the layer's framerate
+	float ratio = roundedFrameRate / (float(in_data->time_scale) / float(in_data->time_step));
+	// timestep value for our posterize framerate (timestep is AE's way of keeping track of the distance between each frame)
+	float posterizeTimestep = in_data->time_scale / giP->posterizeValue;
+	// the amount of frames between each new posterize framerate step
+	// EX: a length of 2 will only update the image every 2 frames
+	float newFrameLength = round(posterizeTimestep / round(ratio * in_data->time_step));
+	// create a variable to remember our posterize new time
+	float timeValue = in_data->current_time;
+	// the closest evenly divided frame number
+	float parsedFrame = floor(frameNumber / newFrameLength)*newFrameLength;
+
+	// clamp
+	if (int(newFrameLength) < 1) {
+		newFrameLength = 1;
+	}
+	// if the current frame is not evenly divisble by our new frame length, we will force it to render to last even frame
+	if (int(frameNumber) % int(newFrameLength) != 0) {
+		timeValue = in_data->time_step * parsedFrame;
+	}
+
+
+// Setting the actual time
+
+// Render()
+ERR(PF_CHECKOUT_PARAM(in_data,
+			FILMSCAN_INPUT,
+			timeValue,
+			in_data->time_step,
+			in_data->time_scale,
+			&checkout));
+
+// SmartRender()
+ERR(extra->cb->checkout_layer(in_data->effect_ref,
+			FILMSCAN_INPUT,
+			FILMSCAN_INPUT,
+			&req,
+			timeValue,
+			in_data->time_step,
+			in_data->time_scale,
+			&in_result));
+
